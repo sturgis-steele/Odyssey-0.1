@@ -1,0 +1,52 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "calculator",
+      "description": "Calculate an arithmetic expression. Use for all arithmetic.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "Arithmetic, parentheses or sqrt(x).",
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Expression",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression"
+        ],
+        "title": "Calculation",
+        "type": "object"
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_current_datetime",
+      "description": "Read this device's current local date, time and UTC offset.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "NoArguments",
+        "type": "object"
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_system_information",
+      "description": "Read the device operating system, architecture and Odyssey version.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "NoArguments",
+        "type": "object"
+      }
+    }
+  }
+]

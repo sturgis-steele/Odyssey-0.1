@@ -36,3 +36,6 @@ playwright-report/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Rust build products
+/backend-rust/target/
