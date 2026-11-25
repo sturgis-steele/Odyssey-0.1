@@ -1,5 +1,7 @@
 # Raspberry Pi 5 deployment notes
 
+The instructions below describe the original Python installation and kiosk configuration. Use the [Rust setup commands](../README.md#linux-and-raspberry-pi-os) and [ARM64 validation record](rust-migration/testing.md) for this branch.
+
 The application targets a Raspberry Pi 5 with 8 GB RAM, a 7-inch touchscreen and a 64-bit Raspberry Pi OS installation. Windows testing covers the application protocol and browser viewport sizes. Physical ARM64 hardware, thermals, latency and touch keyboard behavior still need measurement.
 
 ## Prepare the device

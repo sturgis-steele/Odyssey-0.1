@@ -1,5 +1,7 @@
 # Development
 
+The Rust launcher, toolchain and current test commands are in the [README](../README.md). The commands below document the Python reference environment. The configuration table applies to both backends.
+
 Use the repository root as the working directory. The Python and npm lock files describe the tested environment. Python supports Windows and Linux. A compatible browser, native inference build and GGUF are separate installations. The setup and startup sequence is in the [README](../README.md).
 
 ## Common commands
@@ -70,6 +72,9 @@ Process environment variables override `backend/.env`. Relative database paths r
 | `MODEL_TIMEOUT_SECONDS` | 120 | HTTP read/write inactivity timeout during inference |
 | `TEMPERATURE` / `ENABLE_THINKING` | 0.1 / false | Sampling temperature and model-template setting |
 | `SYSTEM_PROMPT` | Built-in local assistant instructions | Optional concise override |
+| `ODYSSEY_ROOT` | Launch root | Rust deployment root, supplied in the process environment |
+| `ODYSSEY_TIMEZONE` | Device zone | Optional IANA zone for the Rust clock tool |
+| `LOG_LEVEL` | info | Rust structured application log level |
 
 ## Debugging
 

@@ -1,5 +1,7 @@
 # Local model setup and validation
 
+The model protocol and prompt checks below apply to the Rust migration. The [current startup guide](../README.md) includes native Windows and WSL launchers.
+
 Use a single-model llama.cpp server with a local GGUF. Install the server binary for the laptop's CPU architecture. Windows release archives need their adjacent runtime DLLs. Check `llama-server --version` and `--help` against the flags below. The exact runtime verified on this laptop was the bundled Windows AMD64 server, version `0.9.0-dev`, commit `6c01da627`. [Official releases](https://github.com/ggml-org/llama.cpp/releases) · [Server options and endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
 
 ## Select a model

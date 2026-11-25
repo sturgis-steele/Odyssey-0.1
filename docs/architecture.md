@@ -1,4 +1,6 @@
-# Stage 1 architecture
+# Stage 1 reference architecture
+
+This document records the Python implementation. See the [Rust architecture](rust-migration/architecture.md) for the migration branch.
 
 Odyssey has one browser interface, one application process and one inference process. All three run on the device.
 

@@ -1,109 +1,127 @@
 # Odyssey
 
-Odyssey is an offline personal assistant for a portable knowledge device. Stage 1 runs on a Windows laptop with a touchscreen-oriented React console, a FastAPI application, local SQLite storage and a separate CPU-only llama.cpp server. Normal operation uses loopback connections and locally bundled assets.
+Odyssey is an offline personal assistant for a portable knowledge device. The React console talks to a local Rust backend built with Axum and Tokio. SQLite stores conversations and tool activity. A separate llama.cpp process runs a GGUF chosen by the device owner.
 
-## What works
+The console streams Markdown answers, stops generation, reopens saved and interrupted turns, and displays real tool results. Calculator, local time, device information and the archive work with inference offline. Stage 1 provides one generation slot. Knowledge collections, retrieval, maps, calendar, persistent memory and speech are future stages.
 
-- Stream assistant answers, stop generation, read Markdown and inspect actual tool results.
-- Ask the model to calculate, read the local date/time or inspect device information. Run the same read-only tools directly in Tools while inference is unavailable.
-- Create, reopen, page through and delete conversations. SQLite retains partial responses and tool activity across restarts.
-- See independent backend and model status, the model alias and configuration. Enter fullscreen from the top bar.
+## Run on this Windows laptop
 
-## Windows quick start
-
-Use Python 3.11 or later, Node.js 22.12 or later and npm. Inference also needs a recent tool-capable `llama-server` build and a local GGUF with a matching Jinja chat template. The release tested on the development laptop used Python 3.15.2, Node 24.18.0 and LFM3 1.7B Q4_K_M. Run the commands from the repository root.
-
-### One-time setup
+The verified setup uses the local Debian WSL distro `OdysseyRustDev`, Windows Chromium and the existing LFM3 GGUF. The compiled console and release binary are present in the migration worktree. Open two PowerShell terminals there. Ports 8000 and 8080 already had local listeners during handoff, so these commands use 18580 and 18581. In the first terminal, start the model.
 
 ~~~powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
+Set-Location C:\Users\Sturgis\Code\odyssey-rust
+.\scripts\start-model.ps1 -WslDistro OdysseyRustDev -OllamaModel 'lfm3:latest' -Port 18581
+~~~
+
+In the second, start the application.
+
+~~~powershell
+Set-Location C:\Users\Sturgis\Code\odyssey-rust
+$env:BACKEND_PORT = '18580'
+$env:LLAMA_BASE_URL = 'http://127.0.0.1:18581/v1'
+.\scripts\start-odyssey.ps1 -WslDistro OdysseyRustDev
+~~~
+
+Open [Odyssey](http://127.0.0.1:18580/). The application command also works by itself for saved conversations and manual tools. The model launcher starts llama-server directly using the file already installed on disk. `-ModelPath` accepts another local GGUF. Ctrl+C stops a foreground service.
+
+For React development on this laptop, open a third terminal. IPv6 loopback port 5173 was available during validation.
+
+~~~powershell
+Set-Location C:\Users\Sturgis\Code\odyssey-rust
+$env:BACKEND_PORT = '18580'
+npm.cmd --prefix frontend run dev -- --host ::1
+~~~
+
+Open the [local Vite console](http://[::1]:5173/).
+
+## Native Windows development
+
+Use stable Rust 1.100 or newer and a matching C toolchain for bundled SQLite. The MSVC host uses Visual Studio C++ Build Tools and a Windows SDK. A GNU Rust host uses MinGW-w64. Node 22.12 or newer and npm build the UI. Dependency installation can use the network or populated local caches. The native Windows release cross-compiles successfully. This laptop's application-control policy blocks execution of the unsigned native binary. The WSL commands above were exercised here. [Rust installation](https://rust-lang.org/tools/install/)
+
+~~~powershell
+rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
+cargo +1.100.0 fetch --locked --manifest-path backend-rust/Cargo.toml
+cargo +1.100.0 build --locked --release --manifest-path backend-rust/Cargo.toml
 npm.cmd --prefix frontend ci
-if (!(Test-Path .\backend\.env)) { Copy-Item .\backend\.env.example .\backend\.env }
 npm.cmd --prefix frontend run build
+if (!(Test-Path backend\.env)) { Copy-Item backend\.env.example backend\.env }
 ~~~
 
-The runtime-only Python installation uses `backend/requirements.txt`. Dependency installation needs package access or an offline cache. Choose and obtain model weights separately. [Model selection and setup](docs/model-setup.md)
-
-### Start the model
-
-On the development laptop, use the existing local Ollama model file and bundled llama.cpp executable. This script launches llama-server directly.
-
-~~~powershell
-.\scripts\start-model.ps1 -OllamaModel 'lfm3:latest'
-~~~
-
-On a fresh machine, put `llama-server.exe` on PATH and pass the path to your existing model file.
+On a Windows system that permits the locally built executable, use these in separate terminals. The launcher can rebuild after edits with `-Build`.
 
 ~~~powershell
 .\scripts\start-model.ps1 -ModelPath .\models\assistant.gguf
 ~~~
 
-The default model alias is `odyssey-local` and the server listens at `127.0.0.1:8080`. To change models, choose another file in the launcher. Keep its `-Alias`, `-Port` and `-Context` consistent with `LLAMA_MODEL`, `LLAMA_BASE_URL` and `CONTEXT_TOKENS` in `backend/.env`.
-
-### Start FastAPI and open Odyssey
-
-Launch the application in a second terminal.
-
 ~~~powershell
-.\.venv\Scripts\python.exe backend\run.py
+.\scripts\start-odyssey.ps1
 ~~~
 
-Open the built application at [Odyssey on localhost](http://127.0.0.1:8000/). FastAPI serves the compiled React assets as well as the API. The interface, saved conversations and manual tools work with the model stopped.
-
-### Start React for development
-
-Keep FastAPI running and launch Vite in a third terminal.
+For live React editing, keep the model and either Rust launcher running and start Vite in a third terminal. Its proxy uses the same backend settings. Open the [development console](http://127.0.0.1:5173/).
 
 ~~~powershell
 npm.cmd --prefix frontend run dev
 ~~~
 
-Open the [Vite development console](http://127.0.0.1:5173/). Vite forwards only the local API requests to FastAPI. Ctrl+C stops each foreground service.
+## Linux and Raspberry Pi OS
 
-## Verify a first conversation
+Use a 64-bit OS and stable Rust 1.100 or newer. On Debian or Raspberry Pi OS, the native build needs a C compiler and linker. A built frontend/dist can be copied from the development machine. A deployed device needs the backend executable, built assets, writable data directory and any chosen external model/runtime. The normal application runtime requires neither Python nor Node.
 
-Send **What is 157 multiplied by 243?** in Assistant. Expand Calculator when its status changes to Completed. Its value and the model's final answer should both equal **38,151**. Repeat with the local time and operating system prompts. Open Conversations to retrieve each saved turn. The following command runs the four real-model prompts against the active backend.
-
-~~~powershell
-.\.venv\Scripts\python.exe scripts\validate-model.py
+~~~bash
+sudo apt-get update
+sudo apt-get install build-essential
+cargo build --locked --release --manifest-path backend-rust/Cargo.toml
+# When building assets locally with Node 22.12+ installed
+npm --prefix frontend ci
+npm --prefix frontend run build
+# Start the API and compiled console from the checkout
+./backend-rust/target/release/odyssey-backend
 ~~~
 
-For deterministic tests, run pytest and the browser suite. Install its Chromium browser once or point `PLAYWRIGHT_CHROMIUM_EXECUTABLE` at an existing compatible Chromium executable.
+Start local inference in another terminal with a tool-aware llama.cpp build and the model's embedded Jinja template.
+
+~~~bash
+llama-server -m /srv/odyssey/models/assistant.gguf --alias odyssey-local \
+  --host 127.0.0.1 --port 8080 -c 4096 -np 1 -ngl 0 --jinja --offline \
+  --no-ui --no-context-shift --cors-origins localhost
+~~~
+
+For an installation outside the checkout, set ODYSSEY_ROOT to the directory containing frontend/dist and the optional backend/.env. Use an explicit writable DATABASE_PATH when installing in a read-only application directory. Run the device service as its ordinary local account. The [testing record](docs/rust-migration/testing.md) lists target toolchains, binary requirements and physical hardware checks.
+
+## Configuration and data
+
+Process settings override backend/.env. Default ports are 8000 for the API and 8080 for llama.cpp. Set LLAMA_BASE_URL to the loopback HTTP /v1 endpoint and LLAMA_MODEL to the server alias. The launcher accepts -Alias, -Port and -Context. Context and output budgets, history turns, thinking, sampling and timeouts retain the Stage 1 environment names. LOG_LEVEL controls structured logs. ODYSSEY_TIMEZONE optionally sets an IANA zone. [Configuration table](docs/development.md) · [Runtime architecture](docs/rust-migration/architecture.md)
+
+The default database is data/odyssey.db under the runtime root. Rust reads and writes the original version-one schema. Back up through SQLite or stop the owning process before copying. A .lock database prevents concurrent ownership. The production API and UI use loopback and local assets. Local processes under the device account share access to the plaintext store. [Database compatibility](docs/rust-migration/database-compatibility.md)
+
+## Test and compare
 
 ~~~powershell
-.\.venv\Scripts\python.exe -m pytest -q
-Push-Location frontend
-npx.cmd playwright install chromium
-npm.cmd test
+Push-Location backend-rust
+cargo fmt --all -- --check
+cargo check --locked
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo test --locked
+cargo build --release --locked
 Pop-Location
+npm.cmd --prefix frontend run typecheck
+npm.cmd --prefix frontend run build
+npm.cmd --prefix frontend test
 ~~~
 
-## Layout
+Playwright needs its installed Chromium or PLAYWRIGHT_CHROMIUM_EXECUTABLE pointing to a compatible existing browser. The integration tests use private databases and a mock HTTP model server. The acceptance suite exercises a real GGUF, a disconnected network namespace, persistence, both target screen sizes and cancellation. [Procedures and platform results](docs/rust-migration/testing.md) · [Measured performance](docs/rust-migration/performance.md)
 
-~~~text
-backend/app/         FastAPI, configuration, API schemas and SQLite
-backend/app/ai/      Model interface, llama.cpp adapter and turn orchestration
-backend/app/tools/   Validated registry, calculator, system clock and device information
-backend/tests/       Deterministic API, provider, persistence and tool tests
-backend/run.py       Validated single-worker launcher and structured logging
-frontend/src/       React shell, pages, components, hooks, API client and local assets
-frontend/tests/     Chromium UI and stream-contract tests using fixtures
-frontend/tests-live/ Opt-in browser tests against actual local processes
-scripts/            Windows model launcher and live model validation
-docs/               Development, architecture, validation and device handoff
+The original Python backend remains in backend/ for compatibility checks. Use its pinned development environment for pytest and the cross-language comparison harness. Run the reference on its own port and a separate database copy.
+
+~~~powershell
+python -m venv .venv-reference
+.\.venv-reference\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
+.\.venv-reference\Scripts\python.exe -m pytest -q
+$env:BACKEND_PORT = '8001'
+$env:DATABASE_PATH = '.local/reference-comparison.db'
+.\.venv-reference\Scripts\python.exe backend\run.py
 ~~~
 
-## Scope and limitations
+## Migration and distribution
 
-Stage 1 supplies an assistant and conversation archive. Offline reference collections, document retrieval, long-term memory, calendar, voice and maps are future stages. Conversations are plaintext local SQLite data. The device supports one generation at a time. Model and template quality affect tool selection. Physical Pi deployment, battery performance and an isolated physical-network test remain to be verified.
-
-The development environment's resolved dependency versions are pinned. Rights to distribute each model, template and future dataset require a separate review. Odyssey's product license remains an owner decision. [Development and licensing](docs/development.md) · [Stage roadmap](docs/roadmap.md)
-
-## Documentation
-
-- Data model, endpoints and the SSE contract are in the [architecture guide](docs/architecture.md).
-- Setup, configuration, testing, debugging and dependency notices are in the [development guide](docs/development.md).
-- Model setup, template verification and the A–G acceptance procedure are in the [model guide](docs/model-setup.md).
-- Linux commands and Chromium kiosk setup are in the [Pi deployment notes](docs/deployment-notes.md).
-- Measured Windows results and remaining hardware checks are in the [Stage 1 validation record](docs/validation.md).
+The [migration report](docs/rust-migration/completion-report.md) links the implementation, validation and remaining work. The [HTTP and SSE contract](docs/rust-migration/api-contracts.md) and [backend audit](docs/rust-migration/backend-audit.md) describe compatibility with Stage 1. The [crate inventory](docs/licensing/rust-dependencies.md) and [distribution review](docs/licensing/distribution-considerations.md) cover backend dependencies, model weights, front-end assets, and obligations for an eventual device image.

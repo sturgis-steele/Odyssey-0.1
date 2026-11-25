@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Ollama')]
     [ValidatePattern('^[\w.-]+:[\w.-]+$')][string]$OllamaModel,
     [string]$ServerPath,
+    [string]$WslDistro,
     [string]$Alias = 'odyssey-local',
     [ValidateRange(1, 65535)][int]$Port = 8080,
     [ValidateRange(1024, 131072)][int]$Context = 4096
@@ -20,11 +21,19 @@ if ($OllamaModel) {
     }
     $ModelPath = Join-Path $store ('blobs\' + $layer[0].digest.Replace(':', '-'))
 }
+$model = (Resolve-Path -LiteralPath $ModelPath).Path
+$options = @('--alias', $Alias, '--host', '127.0.0.1', '--port', $Port, '-c', $Context, '-np', '1', '-ngl', '0', '--jinja', '--offline', '--no-webui', '--no-context-shift', '--cors-origins', 'localhost')
+if ($WslDistro) {
+    $linuxPath = & wsl.exe -d $WslDistro --exec wslpath -a $model
+    if ($LASTEXITCODE) { throw 'Could not translate the local model path for WSL.' }
+    if (-not $ServerPath) { $ServerPath = 'llama-server' }
+    & wsl.exe -d $WslDistro --exec $ServerPath -m $linuxPath.Trim() @options
+    exit $LASTEXITCODE
+}
 if (-not $ServerPath) {
     $binary = Get-Command llama-server.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     $ServerPath = if ($binary) { $binary.Source } else { Join-Path $env:LOCALAPPDATA 'Programs\Ollama\lib\ollama\llama-server.exe' }
 }
 $server = (Resolve-Path -LiteralPath $ServerPath).Path
-$model = (Resolve-Path -LiteralPath $ModelPath).Path
-& $server -m $model --alias $Alias --host 127.0.0.1 --port $Port -c $Context -np 1 -ngl 0 --jinja --offline --no-webui --no-context-shift --cors-origins localhost
+& $server -m $model @options
 exit $LASTEXITCODE
