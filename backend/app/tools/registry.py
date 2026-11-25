@@ -84,7 +84,7 @@ class Registry:
 def device_registry(device: DeviceInformation | None = None) -> Registry:
     source = device or LocalDevice()
     return Registry([
-        Tool("calculator", "Calculate an arithmetic expression. Use for all arithmetic.", Calculation, calculate),
+        Tool("calculator", "Calculate an arithmetic or scientific expression: arithmetic, powers, roots, trigonometry, logarithms, exp, abs, floor and ceil. Use for all math.", Calculation, calculate),
         Tool("get_current_datetime", "Read this device's current local date, time and UTC offset.", NoArguments, local_time),
         Tool("get_system_information", "Read the device operating system, architecture and Odyssey version.",
              NoArguments, lambda _: source.read()),

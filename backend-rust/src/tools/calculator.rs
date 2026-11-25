@@ -1,11 +1,16 @@
 use num_bigint::BigInt;
-use num_traits::{Signed, ToPrimitive, Zero};
+use num_traits::{FromPrimitive, Signed, ToPrimitive, Zero};
 use serde_json::{Number, Value};
 use std::{str::FromStr, sync::LazyLock};
 
 const SYNTAX: &str = "This expression cannot be calculated. Check its syntax and operands.";
-const DOMAIN: &str = "Use numbers, arithmetic operators, parentheses or sqrt(x).";
+const DOMAIN: &str = "Use numbers, arithmetic operators, parentheses or a function call like sqrt(x) or sin(x).";
 const RANGE: &str = "The result exceeds the supported real-number range.";
+const MATH_DOMAIN: &str = "math domain error";
+const FUNCTIONS: &[&str] = &[
+    "abs", "acos", "acosh", "asin", "asinh", "atan", "atanh", "ceil", "cos", "cosh", "exp",
+    "floor", "ln", "log", "log2", "log10", "sin", "sinh", "sqrt", "tan", "tanh",
+];
 static LIMIT: LazyLock<BigInt> = LazyLock::new(|| BigInt::from(10u8).pow(100));
 type Calc<T> = Result<T, &'static str>;
 
@@ -97,6 +102,57 @@ impl Numeric {
         Self::Float(v).check()
     }
 }
+fn function(name: &str, arg: Numeric) -> Calc<Numeric> {
+    if name == "abs" {
+        return match arg {
+            Numeric::Int(i) => Numeric::Int(i.abs()),
+            Numeric::Float(f) => Numeric::Float(f.abs()),
+        }
+        .check();
+    }
+    let x = arg.float();
+    let out_of_domain = match name {
+        "sqrt" => x < 0.0,
+        "asin" | "acos" => x.abs() > 1.0,
+        "acosh" => x < 1.0,
+        "atanh" => x.abs() >= 1.0,
+        "ln" | "log" | "log2" | "log10" => x <= 0.0,
+        _ => false,
+    };
+    if out_of_domain {
+        return Err(MATH_DOMAIN);
+    }
+    if matches!(name, "floor" | "ceil") {
+        let n = if name == "floor" { x.floor() } else { x.ceil() };
+        return match BigInt::from_f64(n) {
+            Some(i) => Numeric::Int(i),
+            None => Numeric::Float(n),
+        }
+        .check();
+    }
+    let v = match name {
+        "abs" => x.abs(),
+        "acos" => x.acos(),
+        "acosh" => x.acosh(),
+        "asin" => x.asin(),
+        "asinh" => x.asinh(),
+        "atan" => x.atan(),
+        "atanh" => x.atanh(),
+        "cos" => x.cos(),
+        "cosh" => x.cosh(),
+        "exp" => x.exp(),
+        "ln" | "log" => x.ln(),
+        "log2" => x.log2(),
+        "log10" => x.log10(),
+        "sin" => x.sin(),
+        "sinh" => x.sinh(),
+        "sqrt" => x.sqrt(),
+        "tan" => x.tan(),
+        "tanh" => x.tanh(),
+        _ => return Err(DOMAIN),
+    };
+    Numeric::Float(v).check()
+}
 struct Parser<'a> {
     tail: &'a str,
     nodes: usize,
@@ -132,19 +188,8 @@ impl Parser<'_> {
                 return Err(SYNTAX);
             }
             v
-        } else if self.eat("sqrt") {
-            self.nodes(3)?;
-            if !self.eat("(") {
-                return Err(DOMAIN);
-            }
-            let v = self.expr(0)?.float();
-            if !self.eat(")") {
-                return Err(SYNTAX);
-            }
-            if v < 0.0 {
-                return Err("math domain error");
-            }
-            Numeric::Float(v.sqrt())
+        } else if self.tail.starts_with(|c: char| c.is_ascii_alphabetic()) {
+            self.ident()?
         } else {
             self.nodes(1)?;
             self.number()?
@@ -173,6 +218,36 @@ impl Parser<'_> {
             left = left.apply(op, right)?;
         }
         Ok(left)
+    }
+    fn ident(&mut self) -> Calc<Numeric> {
+        let n = self
+            .tail
+            .bytes()
+            .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+            .count();
+        let name = &self.tail[..n];
+        self.tail = &self.tail[n..];
+        if name == "pi" || name == "e" {
+            self.nodes(1)?;
+            let c = if name == "pi" {
+                std::f64::consts::PI
+            } else {
+                std::f64::consts::E
+            };
+            return Numeric::Float(c).check();
+        }
+        if !FUNCTIONS.contains(&name) {
+            return Err(DOMAIN);
+        }
+        self.nodes(3)?;
+        if !self.eat("(") {
+            return Err(DOMAIN);
+        }
+        let arg = self.expr(0)?;
+        if !self.eat(")") {
+            return Err(SYNTAX);
+        }
+        function(name, arg)
     }
     fn number(&mut self) -> Calc<Numeric> {
         let raw = self.tail;

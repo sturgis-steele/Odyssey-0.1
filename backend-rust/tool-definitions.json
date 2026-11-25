@@ -3,12 +3,12 @@
     "type": "function",
     "function": {
       "name": "calculator",
-      "description": "Calculate an arithmetic expression. Use for all arithmetic.",
+      "description": "Calculate an arithmetic or scientific expression: arithmetic, powers, roots, trigonometry, logarithms, exp, abs, floor and ceil. Use for all math.",
       "parameters": {
         "additionalProperties": false,
         "properties": {
           "expression": {
-            "description": "Arithmetic, parentheses or sqrt(x).",
+            "description": "Arithmetic, parentheses, constants pi and e, or a function call like sqrt(x), sin(x), log(x) or exp(x).",
             "maxLength": 192,
             "minLength": 1,
             "title": "Expression",

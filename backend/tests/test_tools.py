@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import datetime
 
 import pytest
@@ -14,6 +15,10 @@ def registry():
 @pytest.mark.parametrize(("expression", "result"), [
     ("12 * 18", 216), ("(125 / 5) + 17", 42), ("sqrt(144)", 12), ("2 ** 10", 1024),
     ("-7 % 3", 2), ("157 * 243", 38151), ("-(1.5 + 3)", -4.5),
+    ("sin(pi / 2)", 1.0), ("cos(0)", 1.0), ("tan(0)", 0.0), ("atan(1) * 4", math.pi),
+    ("log(e)", 1.0), ("ln(e)", 1.0), ("log10(1000)", 3.0), ("log2(8)", 3.0),
+    ("exp(0)", 1.0), ("abs(-5)", 5), ("floor(3.7)", 3), ("ceil(3.2)", 4),
+    ("sinh(0)", 0.0), ("asinh(0)", 0.0), ("acosh(1)", 0.0), ("atanh(0)", 0.0),
 ])
 def test_arithmetic(registry, expression, result):
     assert registry.run("calculator", {"expression": expression}).result == {"value": result}
@@ -24,6 +29,8 @@ def test_arithmetic(registry, expression, result):
     {"expression": "2**10000"}, {"expression": "sqrt(-1)"}, {"expression": "type(1)"},
     {"expression": "'abc'"}, {"expression": "9" * 193}, {"expression": "1e309"},
     {"expression": "[1, 2]"}, {"expression": "2+"}, "[]", "{invalid",
+    {"expression": "asin(2)"}, {"expression": "log(0)"}, {"expression": "atanh(1)"},
+    {"expression": "exp(1000)"}, {"expression": "sin 1"}, {"expression": "sin(1, 2)"},
 ])
 def test_calculator_rejects_invalid_inputs(registry, arguments):
     assert not registry.run("calculator", arguments).ok
