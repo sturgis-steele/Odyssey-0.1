@@ -1,6 +1,6 @@
 # Stage 1 reference architecture
 
-This document records the Python implementation. See the [Rust architecture](rust-migration/architecture.md) for the migration branch.
+This document records the original Python implementation, which has been removed from the checkout; its final state remains in Git history. See the [Rust architecture](rust-migration/architecture.md) for the current branch. The storage, HTTP and streaming contracts below still describe the Rust port.
 
 Odyssey has one browser interface, one application process and one inference process. All three run on the device.
 

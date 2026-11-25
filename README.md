@@ -111,16 +111,7 @@ npm.cmd --prefix frontend test
 
 Playwright needs its installed Chromium or PLAYWRIGHT_CHROMIUM_EXECUTABLE pointing to a compatible existing browser. The integration tests use private databases and a mock HTTP model server. The acceptance suite exercises a real GGUF, a disconnected network namespace, persistence, both target screen sizes and cancellation. [Procedures and platform results](docs/rust-migration/testing.md) · [Measured performance](docs/rust-migration/performance.md)
 
-The original Python backend remains in backend/ for compatibility checks. Use its pinned development environment for pytest and the cross-language comparison harness. Run the reference on its own port and a separate database copy.
-
-~~~powershell
-python -m venv .venv-reference
-.\.venv-reference\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
-.\.venv-reference\Scripts\python.exe -m pytest -q
-$env:BACKEND_PORT = '8001'
-$env:DATABASE_PATH = '.local/reference-comparison.db'
-.\.venv-reference\Scripts\python.exe backend\run.py
-~~~
+The original Python backend was removed after the migration completed; its final state remains in Git history for reference.
 
 ## Migration and distribution
 

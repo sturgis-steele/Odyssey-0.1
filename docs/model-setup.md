@@ -40,7 +40,7 @@ Start the ARM64 native executable with the local model file.
 llama-server -m ./models/assistant.gguf --alias odyssey-local --host 127.0.0.1 --port 8080 -c 4096 -np 1 -ngl 0 --jinja --offline --no-webui --no-context-shift --cors-origins localhost
 ~~~
 
-The CPU-only configuration uses one slot and a 4,096-token context. The served alias must match `LLAMA_MODEL`. Set `LLAMA_BASE_URL=http://127.0.0.1:8080/v1` and `CONTEXT_TOKENS=4096` in `backend/.env`. Restart FastAPI after changing configuration.
+The CPU-only configuration uses one slot and a 4,096-token context. The served alias must match `LLAMA_MODEL`. Set `LLAMA_BASE_URL=http://127.0.0.1:8080/v1` and `CONTEXT_TOKENS=4096` in `backend/.env`. Restart the backend after changing configuration.
 
 ## Verify the template and connection
 
@@ -62,7 +62,7 @@ Use `--jinja` explicitly. Model families encode calls differently. llama-server 
 Run the API-level probe with both services running. It creates four conversations and leaves them available for inspection.
 
 ~~~powershell
-.\.venv\Scripts\python.exe scripts\validate-model.py
+python scripts\validate-model.py
 ~~~
 
 The same prompts can be sent in Assistant. Expand each tool activity and compare its returned value to the final answer.
@@ -73,15 +73,15 @@ The same prompts can be sent in Assistant. Expand each tool activity and compare
 | B | Send “What is 157 multiplied by 243?” | `calculator` completes with `38151` and the answer contains 38,151 |
 | C | Send “What is the current local date and time?” | `get_current_datetime` returns the machine's current local time and offset. Compare the answer with that result |
 | D | Send “What operating system is this device running?” | `get_system_information` returns the OS and architecture. Compare the answer with that result |
-| E | Record the conversation title, stop FastAPI with Ctrl+C, restart it with the same database and reopen the chat | Text, tool results and ordering survive |
-| F | Stop the test llama-server with Ctrl+C, leave FastAPI running, open System and select Refresh status | Backend online, model offline. Open a saved conversation and run `2 ** 10` in Tools. Restart the model and refresh |
+| E | Record the conversation title, stop the backend with Ctrl+C, restart it with the same database and reopen the chat | Text, tool results and ordering survive |
+| F | Stop the test llama-server with Ctrl+C, leave the backend running, open System and select Refresh status | Backend online, model offline. Open a saved conversation and run `2 ** 10` in Tools. Restart the model and refresh |
 | G | After installation, run the built UI, disconnect Wi-Fi and Ethernet, reload the loopback URL and repeat A–D | Assets load and chat/tools work on localhost. Restore the network afterwards |
 
 ## Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
-| Backend offline | Start `backend/run.py`, check `/api/health` and confirm Vite is using the configured port |
+| Backend offline | Start the Odyssey backend, check `/api/health` and confirm Vite is using the configured port |
 | Model loading | Wait for `/health` to return 200. A 503 can occur while the model is loading |
 | Alias unavailable | Compare `LLAMA_MODEL` against `/v1/models` and the launcher's `--alias` |
 | Server rejects token counting | Use a build exposing `/props`, `/apply-template` and `/tokenize`, in addition to streaming chat completions |

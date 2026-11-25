@@ -1,23 +1,19 @@
 # Development
 
-The Rust launcher, toolchain and current test commands are in the [README](../README.md). The commands below document the Python reference environment. The configuration table applies to both backends.
+The Rust launcher, toolchain and current test commands are in the [README](../README.md). The notes below cover the development workflow and the configuration table.
 
-Use the repository root as the working directory. The Python and npm lock files describe the tested environment. Python supports Windows and Linux. A compatible browser, native inference build and GGUF are separate installations. The setup and startup sequence is in the [README](../README.md).
+Use the repository root as the working directory. The npm and Cargo lock files describe the tested environment. A compatible browser, native inference build and GGUF are separate installations. The setup and startup sequence is in the [README](../README.md).
 
 ## Common commands
 
 ~~~powershell
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
 npm.cmd --prefix frontend ci
-.\.venv\Scripts\python.exe -m pytest -q
 npm.cmd --prefix frontend run typecheck
 npm.cmd --prefix frontend run build
 npm.cmd --prefix frontend test
 ~~~
 
-Install Playwright's Chromium once with `npx.cmd playwright install chromium` from `frontend`. For an existing Chromium browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path. The fixture suite starts its own loopback Vite instance on port 4176 and uses isolated browser contexts. It serves synthetic HTTP responses for predictable UI states. Pytest uses a fake provider, an HTTPX transport fixture for actual llama.cpp payload parsing, and temporary real SQLite databases.
-
-If Windows restricts the default pytest temp directory, use a dedicated disposable directory such as `python -m pytest --basetemp=.local/pytest-run` after creating `.local`. Pytest owns the selected base directory for that run.
+Install Playwright's Chromium once with `npx.cmd playwright install chromium` from `frontend`. For an existing Chromium browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path. The fixture suite starts its own loopback Vite instance on port 4176 and uses isolated browser contexts. It serves synthetic HTTP responses for predictable UI states. The Rust integration tests use a mock HTTP model server and temporary real SQLite databases.
 
 ### Live integration
 
@@ -26,24 +22,20 @@ Run the test backend in a separate terminal with its own database to keep valida
 ~~~powershell
 $env:BACKEND_PORT = '8019'
 $env:DATABASE_PATH = '.local/validation.db'
-.\.venv\Scripts\python.exe backend\run.py
+cargo run --locked --manifest-path backend-rust\Cargo.toml
 ~~~
 
-With a production frontend build and a running model, run the validation commands in another terminal.
+With a production frontend build and a running model, run the validation commands in another terminal. The validation script needs any Python 3 installation with HTTPX.
 
 ~~~powershell
-.\.venv\Scripts\python.exe scripts\validate-model.py --port 8019
+python scripts\validate-model.py --port 8019
 $env:ODYSSEY_LIVE_PORT = '8019'
 npm.cmd --prefix frontend run test:live -- --grep-invert 'stopped llama-server'
 ~~~
 
 The browser uses the real backend, SQLite and model. The calculation test rejects non-loopback browser requests, verifies the tool result, reloads the conversation and asks a follow-up. The cancellation test checks concurrent-request rejection, stops an active generation, inspects its durable terminal state and sends another message. Screenshots are written to Playwright's ignored test results directory.
 
-To repeat the process-isolated offline check, start the test backend with the same environment and the following entry point. Its Python audit hook rejects outbound TCP connections and hostname lookups beyond loopback. It checks the restriction before running the real backend. Use llama-server's `--offline` mode and run the same API and browser tests.
-
-~~~powershell
-.\.venv\Scripts\python.exe backend\tests\loopback_server.py
-~~~
+To repeat the process-isolated offline check, run `scripts/validate-offline.sh` against the backend inside a network namespace containing only loopback, with llama-server started in `--offline` mode, then run the same API and browser tests.
 
 Stop the test model process and run the outage case.
 
@@ -86,11 +78,11 @@ Process environment variables override `backend/.env`. Relative database paths r
 
 ## Conventions
 
-Keep API validation and error translation in the backend. New providers implement the small protocol in `ai/provider.py`. New tools declare a schema, permission class, handler and registry entry. Perform validation before any side effect. Add regression coverage for the new behavior. Database schema changes get an ordered migration and restart tests. Keep native device-specific code behind an interface. The `.in` files declare dependency ranges and the `.txt` files pin tested resolutions. Refresh pins intentionally and test them on the target systems.
+Keep API validation and error translation in the backend. New providers implement the provider interface in `backend-rust`. New tools declare a schema, permission class, handler and registry entry. Perform validation before any side effect. Add regression coverage for the new behavior. Database schema changes get an ordered migration and restart tests. Keep native device-specific code behind an interface. Cargo.lock pins the tested Rust dependency resolutions; refresh pins intentionally and test them on the target systems.
 
 ## Dependencies and commercial distribution
 
-The npm build emits `frontend/dist/THIRD-PARTY-NOTICES.md` with licenses for bundled frontend packages and fonts. Preserve it with the shipped UI. React, Vite, react-markdown, FastAPI and Pydantic carry MIT terms. HTTPX and Uvicorn carry BSD-3-Clause terms. The icon bundle includes ISC and inherited Feather MIT notices. Barlow and IBM Plex Mono use SIL OFL 1.1. See the installed packages' exact license texts and the generated frontend notices. Upstream Python, SQLite and the native binary have separate terms. The Python dependency tree includes the OpenTelemetry API through FastAPI. Odyssey configures no telemetry SDK, exporter or remote endpoint. [SQLite copyright](https://sqlite.org/copyright.html) · [llama.cpp license](https://github.com/ggml-org/llama.cpp/blob/master/LICENSE)
+The npm build emits `frontend/dist/THIRD-PARTY-NOTICES.md` with licenses for bundled frontend packages and fonts. Preserve it with the shipped UI. React, Vite and react-markdown carry MIT terms. The icon bundle includes ISC and inherited Feather MIT notices. Barlow and IBM Plex Mono use SIL OFL 1.1. See the installed packages' exact license texts and the generated frontend notices. SQLite, the Rust crate tree and llama.cpp have separate terms, inventoried in the [licensing notes](licensing/rust-dependencies.md). [SQLite copyright](https://sqlite.org/copyright.html) · [llama.cpp license](https://github.com/ggml-org/llama.cpp/blob/master/LICENSE)
 
 The tested LFM3 weights carry Liquid's LFM 1.0 license, including commercial-use conditions tied to a defined revenue threshold and redistribution obligations. Record the exact artifact, license, template, model source and revision before choosing a shipping configuration. The Qwen3 1.7B publisher lists Apache-2.0. Verify the specific quantization and its accompanying notices. A successful local validation does not settle commercial distribution rights. [LFM3 license](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/blob/main/LICENSE) · [Qwen3 GGUF publisher](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF)
 

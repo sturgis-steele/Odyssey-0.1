@@ -1,16 +1,15 @@
 # Raspberry Pi 5 deployment notes
 
-The instructions below describe the original Python installation and kiosk configuration. Use the [Rust setup commands](../README.md#linux-and-raspberry-pi-os) and [ARM64 validation record](rust-migration/testing.md) for this branch.
+Use the [Rust setup commands](../README.md#linux-and-raspberry-pi-os) and [ARM64 validation record](rust-migration/testing.md) for the current branch. The notes below cover the device and kiosk configuration.
 
 The application targets a Raspberry Pi 5 with 8 GB RAM, a 7-inch touchscreen and a 64-bit Raspberry Pi OS installation. Windows testing covers the application protocol and browser viewport sizes. Physical ARM64 hardware, thermals, latency and touch keyboard behavior still need measurement.
 
 ## Prepare the device
 
-Install a supported Python 3.11+ interpreter with venv, an ARM64 llama.cpp CPU build and an appropriate local GGUF. Build the frontend on the development laptop and copy `frontend/dist/` with the backend, or install Node 22.12+ on the Pi to build locally. The built UI requires only FastAPI and llama-server at runtime. Install wheels matching the Pi's Python, Linux and architecture. Windows virtual environments and inference binaries cannot be transferred as working runtimes.
+Install an ARM64 llama.cpp CPU build and an appropriate local GGUF. Build the backend and frontend on the development machine and copy the release binary with `frontend/dist/`, or install Rust 1.100+ and Node 22.12+ on the Pi to build locally. The built UI requires only the Odyssey backend and llama-server at runtime; no Python or Node is needed on the device. Windows binaries cannot be transferred as working runtimes.
 
 ~~~bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements.txt
+cargo build --locked --release --manifest-path backend-rust/Cargo.toml
 cp -n backend/.env.example backend/.env
 # If building the UI on this device
 (cd frontend && npm ci && npm run build)
@@ -23,10 +22,10 @@ llama-server -m ./models/assistant.gguf --alias odyssey-local --host 127.0.0.1 -
 ~~~
 
 ~~~bash
-.venv/bin/python backend/run.py
+./backend-rust/target/release/odyssey-backend
 ~~~
 
-For reproducible offline setup, prepare the native runtime, weights, platform-specific Python wheelhouse and prebuilt UI before disconnecting. Confirm both `/api/health` and `/api/system/status`. The hardware-independent device information implementation uses Python's standard platform API.
+For reproducible offline setup, prepare the native runtime, weights and prebuilt UI before disconnecting. Confirm both `/api/health` and `/api/system/status`.
 
 ## Touchscreen and kiosk
 
@@ -36,7 +35,7 @@ A normal Chromium tab supports the console's fullscreen button. The following co
 chromium --kiosk --no-first-run http://127.0.0.1:8000/
 ~~~
 
-For unattended boot, use separate unprivileged systemd services for llama-server and FastAPI, absolute paths, a writable application data directory and `Restart=on-failure`. FastAPI can start while the model loads. In a labwc desktop session, launch Chromium from the session user's `~/.config/labwc/autostart` after the backend is reachable. Use the executable name supplied by the installed Chromium package. [Raspberry Pi kiosk guide](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)
+For unattended boot, use separate unprivileged systemd services for llama-server and the Odyssey backend, absolute paths, a writable application data directory and `Restart=on-failure`. The backend can start while the model loads. In a labwc desktop session, launch Chromium from the session user's `~/.config/labwc/autostart` after the backend is reachable. Use the executable name supplied by the installed Chromium package. [Raspberry Pi kiosk guide](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)
 
 ## Hardware acceptance
 
