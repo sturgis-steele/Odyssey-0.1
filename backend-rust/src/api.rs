@@ -243,7 +243,7 @@ async fn local(State(origins): State<Arc<Vec<HeaderValue>>>, req: Request, next:
         })
     {
         (StatusCode::BAD_REQUEST, "Invalid host header").into_response()
-    } else if path.ends_with('/') && known_route(path.trim_end_matches('/')) {
+    } else if api && path.ends_with('/') && known_route(path.trim_end_matches('/')) {
         let query = req
             .uri()
             .query()
@@ -291,7 +291,7 @@ pub async fn application(cfg: Config) -> std::result::Result<Router, String> {
     let state = StateData {
         model: Llama::new(cfg.clone()).map_err(|e| e.to_string())?,
         store: Store::open(cfg.database.clone()).await?,
-        tools: Registry::new(cfg.timezone),
+        tools: Registry::new(cfg.timezone.clone()),
         cfg,
         slot: Arc::new(Semaphore::new(1)),
     };

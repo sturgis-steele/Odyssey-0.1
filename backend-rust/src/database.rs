@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use axum::http::StatusCode;
-use chrono::{SecondsFormat, Utc};
+use jiff::Timestamp;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::{Value, json};
 use std::{path::PathBuf, time::Duration};
@@ -15,7 +15,7 @@ pub struct Store {
 }
 
 fn stamp() -> String {
-    Utc::now().to_rfc3339_opts(SecondsFormat::Micros, false)
+    format!("{:.6}", Timestamp::now()).replace('Z', "+00:00")
 }
 fn summary(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
     Ok(

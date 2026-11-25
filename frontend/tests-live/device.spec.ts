@@ -69,6 +69,10 @@ test('stopping generation releases the slot and saves its terminal state', async
   })
   expect(overlap.status()).toBe(409)
   expect((await request.delete('/api/conversations/' + id)).status()).toBe(409)
+  const partial = page.locator('.exchange').last().locator('.markdown')
+  await expect(partial).toContainText(/\w/, { timeout: 120000 })
+  const prefix = (await partial.textContent()) || ''
+  await expect.poll(async () => (await partial.textContent())?.length || 0).toBeGreaterThan(prefix.length)
   await page.getByRole('button', { name: 'Stop', exact: true }).click()
   await expect
     .poll(

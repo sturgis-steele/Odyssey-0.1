@@ -1,4 +1,4 @@
-use chrono_tz::Tz;
+use jiff::tz::TimeZone;
 use reqwest::Url;
 use std::{
     collections::HashMap,
@@ -27,7 +27,7 @@ pub struct Config {
     pub temperature: f64,
     pub thinking: bool,
     pub prompt: String,
-    pub timezone: Option<Tz>,
+    pub timezone: Option<TimeZone>,
     pub log_level: tracing::Level,
 }
 pub fn root() -> std::io::Result<PathBuf> {
@@ -153,7 +153,7 @@ impl Config {
         };
         let timezone = vars
             .get("ODYSSEY_TIMEZONE")
-            .map(|z| z.parse::<Tz>().map_err(|_| "Invalid ODYSSEY_TIMEZONE"))
+            .map(|z| TimeZone::get(z).map_err(|_| "Invalid ODYSSEY_TIMEZONE"))
             .transpose()?;
         Ok(Self {
             root: root.into(),

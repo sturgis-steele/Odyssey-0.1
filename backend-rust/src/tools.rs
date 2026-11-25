@@ -1,19 +1,22 @@
 mod calculator;
 use crate::VERSION;
-use chrono::{Local, SecondsFormat, Utc};
-use chrono_tz::Tz;
+use jiff::{Timestamp, tz::TimeZone};
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Registry {
-    definitions: Vec<Value>,
-    timezone: Option<Tz>,
+    definitions: Arc<[Value]>,
+    timezone: Option<TimeZone>,
 }
 impl Registry {
-    pub fn new(timezone: Option<Tz>) -> Self {
+    pub fn new(timezone: Option<TimeZone>) -> Self {
         Self {
-            definitions: serde_json::from_str(include_str!("../tool-definitions.json"))
-                .expect("bundled tool definitions"),
+            definitions: serde_json::from_str::<Vec<Value>>(include_str!(
+                "../tool-definitions.json"
+            ))
+            .expect("bundled tool definitions")
+            .into(),
             timezone,
         }
     }
@@ -62,29 +65,16 @@ impl Registry {
         }
     }
     fn clock(&self) -> Value {
-        let now = Utc::now();
-        let zone = self
-            .timezone
-            .or_else(|| iana_time_zone::get_timezone().ok()?.parse().ok());
-        if let Some(zone) = zone {
-            let t = now.with_timezone(&zone);
-            clock_fields(
-                t.to_rfc3339_opts(SecondsFormat::Secs, false),
-                t.format("%Z").to_string(),
-                t.format("%z").to_string(),
-            )
-        } else {
-            let t = now.with_timezone(&Local);
-            clock_fields(
-                t.to_rfc3339_opts(SecondsFormat::Secs, false),
-                t.format("%Z").to_string(),
-                t.format("%z").to_string(),
-            )
-        }
+        let zone = self.timezone.clone().unwrap_or_else(TimeZone::system);
+        let time = Timestamp::now().to_zoned_datetime(zone);
+        json!({
+            "iso_datetime": time.strftime("%Y-%m-%dT%H:%M:%S%:z").to_string(),
+            "date": time.strftime("%Y-%m-%d").to_string(),
+            "time": time.strftime("%H:%M:%S").to_string(),
+            "timezone": time.strftime("%Z").to_string(),
+            "utc_offset": time.strftime("%z").to_string()
+        })
     }
-}
-fn clock_fields(iso: String, timezone: String, offset: String) -> Value {
-    json!({"date":&iso[..10],"time":&iso[11..19],"timezone":timezone,"utc_offset":offset,"iso_datetime":iso})
 }
 #[cfg(windows)]
 fn os_release() -> Option<String> {

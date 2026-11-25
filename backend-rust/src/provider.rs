@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     error::{Error, Result},
 };
-use axum::http::StatusCode;
+use axum::{body::Bytes, http::StatusCode};
 use reqwest::{Client, RequestBuilder, Response, redirect::Policy};
 use serde_json::{Map, Value, json};
 use std::{
@@ -303,7 +303,7 @@ impl ModelProvider for Llama {
         let response = checked(self.completion_request(messages, tools, true)).await?;
         Ok(LlamaStream {
             response,
-            buffer: Vec::new(),
+            buffer: Bytes::new(),
             cursor: 0,
             finish: None,
             parts: BTreeMap::new(),
@@ -315,7 +315,7 @@ impl ModelProvider for Llama {
 }
 pub struct LlamaStream {
     response: Response,
-    buffer: Vec<u8>,
+    buffer: Bytes,
     cursor: usize,
     finish: Option<String>,
     parts: BTreeMap<usize, Call>,
@@ -348,7 +348,7 @@ impl LlamaStream {
             }
             match self.response.chunk().await.map_err(transport)? {
                 Some(chunk) => {
-                    self.buffer = chunk.to_vec();
+                    self.buffer = chunk;
                     self.cursor = 0;
                 }
                 None if line.is_empty() => return Ok(None),
